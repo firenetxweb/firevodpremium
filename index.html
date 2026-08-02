@@ -8,6 +8,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     
+    <!-- LIBRERÍAS DE REPRODUCCIÓN IPTV Y ANTIBLOQUEO -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+
     <!-- FIREBASE SDKs (Compat version for vanilla HTML) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -181,7 +185,7 @@
             border: 1px solid var(--glass-border);
             overflow-y: auto;
             padding: 15px;
-            display: flex;
+            display: none; /* OCULTO POR DEFECTO HASTA QUE CARGUEN LAS CATEGORÍAS */
             flex-direction: column;
             gap: 10px;
             border-radius: 20px;
@@ -207,7 +211,7 @@
         @media (max-width: 1100px) { .smarters-grid { grid-template-columns: repeat(4, 1fr); } }
         @media (max-width: 768px) { .smarters-grid { grid-template-columns: repeat(3, 1fr); } }
 
-        /* --- BOTONES DE CATEGORÍA --- */
+        /* --- BOTONES DE CATEGORÍA CON CONTROLES MODO EDITOR --- */
         .smarters-cat-btn {
             background: rgba(255, 255, 255, 0.02); 
             border: 1px solid transparent;
@@ -224,8 +228,8 @@
             transition: var(--transition); 
             width: 100%;
         }
-        .smarters-cat-btn .cat-info { display: flex; align-items: center; gap: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
-        .smarters-cat-btn i { color: var(--grey); font-size: 16px; min-width: 18px; transition: var(--transition); pointer-events: none;}
+        .smarters-cat-btn .cat-info { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .smarters-cat-btn i { color: var(--grey); font-size: 16px; min-width: 18px; transition: var(--transition); }
         
         .smarters-cat-btn:focus, .smarters-cat-btn.active, .smarters-cat-btn:hover { 
             background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, rgba(0,0,0,0) 100%);
@@ -237,8 +241,52 @@
             box-shadow: inset 15px 0 20px -10px rgba(0, 243, 255, 0.1), 0 5px 15px rgba(0,0,0,0.3); 
             transform: translateX(5px); 
         }
-        .smarters-cat-btn:focus i:not(.fa-edit, .fa-trash), .smarters-cat-btn.active i:not(.fa-edit, .fa-trash), .smarters-cat-btn:hover i:not(.fa-edit, .fa-trash) { 
+        .smarters-cat-btn:focus i:not(.fa-edit, .fa-trash, .fa-arrow-up, .fa-arrow-down), 
+        .smarters-cat-btn.active i:not(.fa-edit, .fa-trash, .fa-arrow-up, .fa-arrow-down), 
+        .smarters-cat-btn:hover i:not(.fa-edit, .fa-trash, .fa-arrow-up, .fa-arrow-down) { 
             color: #fff; 
+        }
+
+        /* ACCIONES DE EDICIÓN EN LA CARPETA */
+        .cat-editor-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 6px;
+        }
+        .cat-action-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            border-radius: 6px;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            transition: var(--transition);
+        }
+        .cat-action-btn:hover, .cat-action-btn:focus {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+        .cat-action-btn.del:hover, .cat-action-btn.del:focus {
+            background: #ff0055;
+            color: #fff;
+            border-color: #ff0055;
+        }
+        .cat-row-id {
+            background: rgba(0, 243, 255, 0.2);
+            border: 1px solid var(--netflix-red);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+            margin-right: 4px;
         }
 
         .movie-card, .navbar, .episode-card, .nav-item, .carousel-item, .home-hero-bg {
@@ -593,6 +641,48 @@
             color: #000;
             transform: scale(1.05);
         }
+        
+        /* ESTILOS REPRODUCTOR MINIATURA CANALES EN VIVO SIN CONTROLES CON BOTÓN CENTRADO DE EMERGENCIA */
+        .live-preview-wrapper {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .live-preview-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .live-retry-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: none;
+            background: rgba(0, 243, 255, 0.9);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: var(--neon-glow);
+            transition: var(--transition);
+        }
+        .live-retry-btn:hover, .live-retry-btn:focus {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: #fff;
+        }
     </style>
 </head>
 <body>
@@ -628,14 +718,17 @@
         </div>
     </div>
 
-    <!-- MODAL EDITOR DE FONDO DE SECCIÓN -->
+    <!-- MODAL EDITOR DE FONDO DE SECCIÓN Y SINOPSIS VIVO -->
     <div id="section-editor-modal" class="modal-overlay" style="z-index: 60000; display: none;">
         <div class="admin-box" style="margin:auto; display:flex; flex-direction:column; background:var(--glass-bg);">
-            <h2><i class="fas fa-image"></i> Fondo de la Sección</h2>
-            <p style="color:var(--grey); font-size:13px; text-align:center;">Establece una imagen de fondo para la sección actual (<span id="current-section-name"></span>)</p>
+            <h2><i class="fas fa-image"></i> Fondo de Sección y Canales en Vivo</h2>
+            <p style="color:var(--grey); font-size:13px; text-align:center;">Establece imágenes de fondo para la sección actual (<span id="current-section-name"></span>) y la pantalla de sinopsis global para en vivo.</p>
             
-            <label style="color:var(--grey); font-size:12px; margin-bottom:-10px;">URL de la Imagen de Fondo</label>
+            <label style="color:var(--grey); font-size:12px; margin-bottom:-10px;">URL del Fondo de la Sección</label>
             <input type="text" id="section-bg-input" placeholder="https://ruta-de-la-imagen.jpg" class="nav-item">
+            
+            <label style="color:var(--grey); font-size:12px; margin-bottom:-10px; margin-top:10px;">URL Fondo Global Sinopsis (Sólo Canales en Vivo)</label>
+            <input type="text" id="live-synopsis-bg-input" placeholder="https://ruta-imagen-sinopsis-vivo.jpg" class="nav-item">
             
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn-red nav-item" style="flex:1; background: #fff; color:#000; border:none; padding: 12px; border-radius: 8px; font-weight: 700; cursor:pointer;" onclick="saveSectionBg()">GUARDAR</button>
@@ -815,6 +908,12 @@
                         <!-- Generado dinámicamente con insignias de TMDB -->
                     </div>
                     <div class="smarters-divider"></div>
+
+                    <!-- PANTALLA PEQUEÑA DE REPRODUCCIÓN EN VIVO SIN CONTROLES (SOLO PARA EN VIVO) -->
+                    <div id="live-player-container" class="live-preview-wrapper" style="display: none;">
+                        <video id="live-mini-player" playsinline controls></video>
+                        <button id="btn-intent-rescue" class="live-retry-btn" onclick="openExternalPlayerRescue()"><i class="fas fa-external-link-alt"></i> REPRODUCIR EXTERNO</button>
+                    </div>
                     
                     <!-- BLOQUE DE INFORMACIÓN DETALLADA TMDB -->
                     <div class="info-grid-smarters" id="m-info-grid">
@@ -837,13 +936,28 @@
 
     <!-- SCRIPTS LÓGICOS -->
     <script>
+        // === FUNCIÓN GLOBAL PARA LOGOS CAÍDOS (EVITA CUADROS ROTOS) ===
+        window.handleImgError = function(img) {
+            if (!img.src.includes('1000348377.png')) {
+                img.src = 'https://i.ibb.co/r2yTwzWd/1000348377.png';
+            }
+        };
+
+        // CACHE Y MEMOIZACIÓN PARA VELOCIDAD EXTREMA
+        const tmdbCache = new Map();
+
         // === CONFIGURACIÓN TMDB API (INYECCIÓN DE METADATOS) ===
         const TMDB_API_KEY = '61113334178b7302314481eedcd6630f'; 
         const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
         const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
         const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/original';
 
-        // === NAVEGACIÓN GLOBAL D-PAD TV (SPATIAL NAVIGATION) ===
+        // === INSTANCIAS GLOBALES DE REPRODUCCIÓN IPTV / MINI REPRODUCTOR ===
+        let activeHls = null;
+        let activeDash = null;
+        let currentLiveStreamUrl = '';
+
+        // === NAVEGACIÓN GLOBAL D-PAD TV (SPATIAL NAVIGATION OPTIMIZADA) ===
         document.addEventListener('keydown', function(e) {
             const key = e.key || e.keyCode;
             const isUp = key === 'ArrowUp' || key === 38;
@@ -865,7 +979,7 @@
 
             e.preventDefault();
             
-            const selectors = '.nav-item, button, input, select, textarea, [tabindex="0"], .movie-card, .smarters-cat-btn, .carousel-item, .float-btn, .device-code-display, .editor-btn';
+            const selectors = '.nav-item, button, input, select, textarea, [tabindex="0"], .movie-card, .smarters-cat-btn, .carousel-item, .float-btn, .device-code-display, .editor-btn, .cat-action-btn';
             
             let focusables = [];
             let activeModal = document.querySelector('.modal-overlay[style*="display: flex"], .modal-overlay[style*="display:flex"]');
@@ -1247,7 +1361,7 @@
             });
         }
 
-        // === 2.8 PARSER & REPARADOR M3U ===
+        // === 2.8 PARSER & REPARADOR M3U OPTIMIZADO ===
         function parseM3UText(m3uText) {
             parsedM3U = { 'TODOS': [] };
             if (!m3uText) return parsedM3U;
@@ -1256,7 +1370,7 @@
             let currentItem = null;
 
             for (let i = 0; i < lines.length; i++) {
-                let line = lines[i].trim(); // Fundamental para no arrastrar \r en la URL
+                let line = lines[i].trim();
                 if (!line) continue;
 
                 if (line.startsWith('#EXTINF:')) {
@@ -1333,10 +1447,10 @@
             document.getElementById('pl-raw').style.display = t === 'raw' ? 'block' : 'none';
         }
 
-        // --- SISTEMA DE FONDOS POR SECCIÓN ---
+        // --- SISTEMA DE FONDOS POR SECCIÓN Y SINOPSIS EN VIVO ---
         async function loadSectionBg(mode) {
             const bgContainer = document.getElementById('section-bg');
-            bgContainer.style.backgroundImage = 'none'; // Reset por defecto
+            bgContainer.style.backgroundImage = 'none';
             if (mode === 'home') return;
             
             try {
@@ -1354,8 +1468,11 @@
             document.getElementById('current-section-name').innerText = currentAppMode.toUpperCase();
             database.ref(`global_settings/backgrounds/${currentAppMode}`).once('value').then(snap => {
                 document.getElementById('section-bg-input').value = snap.val() || '';
-                document.getElementById('section-editor-modal').style.display = 'flex';
             });
+            database.ref('global_settings/backgrounds/live_synopsis').once('value').then(snap => {
+                document.getElementById('live-synopsis-bg-input').value = snap.val() || '';
+            });
+            document.getElementById('section-editor-modal').style.display = 'flex';
         }
         
         function closeSectionEditorModal() {
@@ -1364,19 +1481,23 @@
         
         async function saveSectionBg() {
             let val = document.getElementById('section-bg-input').value.trim();
+            let liveSynVal = document.getElementById('live-synopsis-bg-input').value.trim();
+            
             await database.ref(`global_settings/backgrounds/${currentAppMode}`).set(val);
-            alert("Fondo guardado con éxito.");
+            await database.ref('global_settings/backgrounds/live_synopsis').set(liveSynVal);
+            
+            alert("Fondos guardados con éxito.");
             loadSectionBg(currentAppMode);
             closeSectionEditorModal();
         }
         
         async function deleteSectionBg() {
             await database.ref(`global_settings/backgrounds/${currentAppMode}`).remove();
-            alert("Fondo eliminado.");
+            await database.ref('global_settings/backgrounds/live_synopsis').remove();
+            alert("Fondos eliminados.");
             loadSectionBg(currentAppMode);
             closeSectionEditorModal();
         }
-        // -------------------------------------
 
         async function changeMode(mode) {
             currentAppMode = mode;
@@ -1421,7 +1542,7 @@
             }
         }
 
-        // === HOME SLIDER Y CAROUSEL LOGIC CON ANIMACIÓN AUTOMÁTICA ===
+        // === HOME SLIDER Y CAROUSEL LOGIC ===
         async function loadTMDBHome() {
             document.getElementById('loader').style.display = 'flex';
             try {
@@ -1448,6 +1569,8 @@
                 const slideSelect = document.getElementById('home-slide-selector');
                 slideSelect.innerHTML = '<option value="new">+ AGREGAR NUEVO SLIDE</option>';
 
+                const frag = document.createDocumentFragment();
+
                 homeSlidesList.forEach((slide, idx) => {
                     let opt = document.createElement('option');
                     opt.value = slide.id;
@@ -1468,8 +1591,10 @@
                         updateHomeHero(slide);
                     });
                     
-                    carousel.appendChild(item);
+                    frag.appendChild(item);
                 });
+
+                carousel.appendChild(frag);
 
                 if(homeSlidesList.length > 0) {
                     homeCurrentSlideIndex = 0;
@@ -1507,8 +1632,8 @@
         function closeEditorModal() { document.getElementById('playlist-editor-modal').style.display = 'none'; }
         function closeItemEditor() { document.getElementById('item-editor-modal').style.display = 'none'; }
         function closeModals() {
+            destroyMiniPlayer();
             document.querySelectorAll('.modal-overlay').forEach(el => el.style.display = 'none');
-            // Si cerramos modal, volvemos foco al contenedor principal
             document.getElementById('main-content').focus();
         }
 
@@ -1580,14 +1705,13 @@
             const grid = document.getElementById('main-content-grid');
             const sidebar = document.getElementById('left-category-sidebar');
             grid.innerHTML = '';
-            sidebar.innerHTML = `
-                <div class="help-tip" style="flex-direction:column; text-align:center;">
-                    <i class="fas fa-folder-open fa-2x" style="margin-bottom:10px;"></i>
-                    Selecciona una Lista para ver sus categorías.
-                </div>`;
+            sidebar.innerHTML = '';
+            sidebar.style.display = 'none';
 
             let allLists = await getListsFromDB();
             let modeLists = allLists.filter(l => l.category === mode);
+
+            const frag = document.createDocumentFragment();
 
             if (isEditorMode) {
                 let addBtn = document.createElement('div');
@@ -1603,11 +1727,11 @@
                     document.getElementById('pl-category').value = currentAppMode;
                     document.getElementById('playlist-editor-modal').style.display = 'flex'; 
                 };
-                grid.appendChild(addBtn);
+                frag.appendChild(addBtn);
             }
 
             if (modeLists.length === 0 && !isEditorMode) {
-                grid.innerHTML += `<div style="grid-column: 1/-1; text-align: center; padding: 50px; color: var(--grey);">
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px; color: var(--grey);">
                     <i class="fas fa-exclamation-triangle fa-3x" style="margin-bottom: 15px; color: var(--netflix-red);"></i>
                     <p style="font-size: 16px;">No hay listas cargadas para esta categoría.</p>
                 </div>`;
@@ -1631,8 +1755,10 @@
                     controls.innerHTML = `<button class="editor-btn delete" tabindex="0" onclick="event.stopPropagation(); deleteList('${list.id}')"><i class="fas fa-trash"></i></button>`;
                     card.appendChild(controls);
                 }
-                grid.appendChild(card);
+                frag.appendChild(card);
             });
+
+            grid.appendChild(frag);
         }
 
         async function savePlaylist() {
@@ -1689,7 +1815,8 @@
             let rawData = "";
             if (currentActiveList.type === 'url') {
                 try {
-                    let response = await fetch(currentActiveList.data);
+                    let fetchUrl = applyAntiBlockProxy(currentActiveList.data);
+                    let response = await fetch(fetchUrl);
                     rawData = await response.text();
                 } catch (error) {
                     alert("Error al cargar la lista remota. Comprueba la URL o problemas de CORS.");
@@ -1702,6 +1829,8 @@
 
             parsedM3U = parseM3UText(rawData);
             
+            const frag = document.createDocumentFragment();
+
             let btnBack = document.createElement('button');
             btnBack.className = 'smarters-cat-btn nav-item';
             btnBack.innerHTML = `<div class="cat-info"><i class="fas fa-arrow-left"></i> VOLVER A LISTAS</div>`;
@@ -1709,43 +1838,130 @@
                 currentActiveList = null;
                 renderPlaylistsFolders(mode);
             };
-            sidebar.appendChild(btnBack);
+            frag.appendChild(btnBack);
 
-            let firstCat = null;
-            for (let cat in parsedM3U) {
-                if (cat === 'TODOS' || parsedM3U[cat].length === 0) continue;
-                if (!firstCat) firstCat = cat;
-                
+            let categoriesList = Object.keys(parsedM3U).filter(c => c !== 'TODOS' && parsedM3U[c].length > 0);
+            let firstCat = categoriesList.length > 0 ? categoriesList[0] : null;
+
+            categoriesList.forEach((cat, index) => {
                 let btn = document.createElement('button');
                 btn.className = 'smarters-cat-btn nav-item';
-                btn.innerHTML = `<div class="cat-info"><i class="fas fa-folder"></i> ${cat}</div> <span class="cat-count">${parsedM3U[cat].length}</span>`;
+                
+                let editorActionsHtml = '';
+                if (isEditorMode) {
+                    editorActionsHtml = `
+                        <div class="cat-editor-actions">
+                            <span class="cat-row-id" title="ID Fila / Posición">#${index + 1}</span>
+                            <div class="cat-action-btn" tabindex="0" title="Editar Nombre/Posición" onclick="event.stopPropagation(); editCategoryDialog('${cat}', ${index})"><i class="fas fa-edit"></i></div>
+                            <div class="cat-action-btn" tabindex="0" title="Mover Arriba" onclick="event.stopPropagation(); moveCategoryOrder('${cat}', 'up')"><i class="fas fa-arrow-up"></i></div>
+                            <div class="cat-action-btn" tabindex="0" title="Mover Abajo" onclick="event.stopPropagation(); moveCategoryOrder('${cat}', 'down')"><i class="fas fa-arrow-down"></i></div>
+                            <div class="cat-action-btn del" tabindex="0" title="Eliminar Carpeta" onclick="event.stopPropagation(); deleteCategoryFolder('${cat}')"><i class="fas fa-trash"></i></div>
+                        </div>
+                    `;
+                }
+
+                btn.innerHTML = `<div class="cat-info"><i class="fas fa-folder"></i> <span class="cat-name-txt">${cat}</span></div> <span class="cat-count">${parsedM3U[cat].length}</span> ${editorActionsHtml}`;
                 btn.onclick = () => {
                     document.querySelectorAll('.smarters-cat-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     renderItems(cat);
                 };
-                sidebar.appendChild(btn);
-            }
+                frag.appendChild(btn);
+            });
+
+            sidebar.appendChild(frag);
 
             if (firstCat) {
-                // Hacer clic automático en la primera categoría válida
+                sidebar.style.display = 'flex';
                 sidebar.children[1].click(); 
             } else {
+                sidebar.style.display = 'none';
                 grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px; color: var(--grey);">La lista está vacía o el formato m3u es incorrecto.</div>`;
             }
 
             document.getElementById('loader').style.display = 'none';
         }
 
-        // --- FETCH TMDB PARA INYECCIÓN ---
+        // --- EDICIÓN Y REORDENAMIENTO DE CARPETAS ---
+        async function editCategoryDialog(oldCatName, currentIndex) {
+            let newCatName = prompt("Editar Nombre de la Carpeta:", oldCatName);
+            if (newCatName === null) return;
+            newCatName = newCatName.trim();
+            
+            let newRowInput = prompt("ID / Número de fila (Posición deseada):", currentIndex + 1);
+            
+            if (newCatName && newCatName !== oldCatName) {
+                if (parsedM3U[oldCatName]) {
+                    parsedM3U[oldCatName].forEach(item => item.group = newCatName);
+                    parsedM3U[newCatName] = parsedM3U[oldCatName];
+                    delete parsedM3U[oldCatName];
+                }
+            }
+
+            let targetCatName = newCatName || oldCatName;
+            let targetIndex = parseInt(newRowInput) - 1;
+
+            if (!isNaN(targetIndex) && targetIndex >= 0) {
+                let keys = Object.keys(parsedM3U).filter(k => k !== 'TODOS');
+                let curIdx = keys.indexOf(targetCatName);
+                if (curIdx !== -1) {
+                    keys.splice(curIdx, 1);
+                    keys.splice(targetIndex, 0, targetCatName);
+                    
+                    let reordered = { 'TODOS': parsedM3U['TODOS'] };
+                    keys.forEach(k => { reordered[k] = parsedM3U[k]; });
+                    parsedM3U = reordered;
+                }
+            }
+
+            await saveM3UState();
+            renderCategories(currentAppMode);
+        }
+
+        async function moveCategoryOrder(catName, direction) {
+            let keys = Object.keys(parsedM3U).filter(k => k !== 'TODOS');
+            let idx = keys.indexOf(catName);
+            if (idx === -1) return;
+
+            if (direction === 'up' && idx > 0) {
+                let temp = keys[idx - 1];
+                keys[idx - 1] = keys[idx];
+                keys[idx] = temp;
+            } else if (direction === 'down' && idx < keys.length - 1) {
+                let temp = keys[idx + 1];
+                keys[idx + 1] = keys[idx];
+                keys[idx] = temp;
+            } else {
+                return;
+            }
+
+            let reordered = { 'TODOS': parsedM3U['TODOS'] };
+            keys.forEach(k => { reordered[k] = parsedM3U[k]; });
+            parsedM3U = reordered;
+
+            await saveM3UState();
+            renderCategories(currentAppMode);
+        }
+
+        async function deleteCategoryFolder(catName) {
+            if (confirm(`¿Estás seguro de eliminar la carpeta "${catName}" y todos sus canales?`)) {
+                delete parsedM3U[catName];
+                await saveM3UState();
+                renderCategories(currentAppMode);
+            }
+        }
+
+        // --- FETCH TMDB CON MEMOIZACIÓN OPTIMIZADA PARA VELOCIDAD ---
         async function fetchTMDBData(title, mode) {
-            // Limpiar título de etiquetas m3u comunes para mejor búsqueda
             let clean = title.replace(/\[.*?\]/g, '')
                              .replace(/\(.*?\)/g, '')
                              .replace(/(1080p|720p|4k|HD|SD|FHD|3D|Latino|Castellano|Sub|Dual|Ingles)/ig, '')
                              .trim();
             if(!clean) return null;
             
+            const cacheKey = `${mode}:${clean.toLowerCase()}`;
+            if (tmdbCache.has(cacheKey)) return tmdbCache.get(cacheKey);
+
             const type = (mode === 'series') ? 'tv' : 'movie';
             const searchUrl = `${TMDB_BASE_URL}/search/${type}?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(clean)}&page=1`;
             
@@ -1754,104 +1970,320 @@
                 let data = await res.json();
                 if (data.results && data.results.length > 0) {
                     let topResult = data.results[0];
-                    // Llamar detalles completos
                     let detailsUrl = `${TMDB_BASE_URL}/${type}/${topResult.id}?api_key=${TMDB_API_KEY}&language=es-ES&append_to_response=credits`;
                     let detailsRes = await fetch(detailsUrl);
-                    return await detailsRes.json();
+                    let fullData = await detailsRes.json();
+                    tmdbCache.set(cacheKey, fullData);
+                    return fullData;
                 }
             } catch (e) {
                 console.error("Error consultando TMDB:", e);
             }
+            tmdbCache.set(cacheKey, null);
             return null;
         }
 
-        // --- RENDERIZAR ELEMENTOS DE UNA CATEGORÍA ---
+        // --- MÓDULO UNIVERSAL ANTIBLOQUEOS IPTV Y FORMATOS AVANZADOS ---
+        function applyAntiBlockProxy(url) {
+            if (!url) return '';
+            let cleanUrl = url.trim();
+            
+            if (location.protocol === 'https:' && cleanUrl.startsWith('http://')) {
+                cleanUrl = cleanUrl.replace('http://', 'https://');
+            }
+
+            if (cleanUrl.includes('.m3u8') || cleanUrl.includes('.ts') || cleanUrl.includes('.mpd')) {
+                const sep = cleanUrl.includes('?') ? '&' : '?';
+                cleanUrl = `${cleanUrl}${sep}_antiblock=${Date.now()}`;
+            }
+
+            return cleanUrl;
+        }
+
+        // --- SISTEMA DE INTENTS PARA REPRODUCTORES EXTERNOS NATIVOS ---
+        function playWithIntent(videoUrl) {
+            if (!videoUrl) return;
+            const targetUrl = applyAntiBlockProxy(videoUrl);
+            const intentUri = `intent:${targetUrl}#Intent;action=android.intent.action.VIEW;type=video/*;S.title=FireVodPremium;end`;
+            window.location.href = intentUri;
+        }
+
+        // --- CORDEL DE CONTROL MINI REPRODUCTOR EN VIVO CON AUDIO HABILITADO ---
+        function destroyMiniPlayer() {
+            const videoElem = document.getElementById('live-mini-player');
+            const retryBtn = document.getElementById('btn-intent-rescue');
+            
+            if (videoElem) {
+                videoElem.pause();
+                videoElem.removeAttribute('src');
+                videoElem.load();
+            }
+            if (activeHls) {
+                activeHls.destroy();
+                activeHls = null;
+            }
+            if (activeDash) {
+                activeDash.reset();
+                activeDash = null;
+            }
+            if (retryBtn) retryBtn.style.display = 'none';
+        }
+
+        function initMiniLivePlayer(streamUrl) {
+            destroyMiniPlayer();
+            
+            const container = document.getElementById('live-player-container');
+            const videoElem = document.getElementById('live-mini-player');
+            const retryBtn = document.getElementById('btn-intent-rescue');
+            
+            if (!container || !videoElem) return;
+            
+            container.style.display = 'block';
+            retryBtn.style.display = 'none';
+            
+            // HABILITAR AUDIO ACTIVAMENTE
+            videoElem.muted = false;
+            videoElem.volume = 1.0;
+            videoElem.autoplay = true;
+            videoElem.setAttribute('playsinline', '');
+
+            currentLiveStreamUrl = streamUrl;
+            const processedUrl = applyAntiBlockProxy(streamUrl);
+
+            container.ondblclick = (e) => {
+                e.stopPropagation();
+                playWithIntent(currentLiveStreamUrl);
+            };
+
+            videoElem.onerror = () => {
+                retryBtn.style.display = 'block';
+            };
+
+            const playVideoSafely = () => {
+                let playPromise = videoElem.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn("Autoplay bloqueado con audio, intentando con volumen bajo:", err);
+                        videoElem.muted = true;
+                        videoElem.play().catch(() => { retryBtn.style.display = 'block'; });
+                    });
+                }
+            };
+
+            // REPRODUCCIÓN HLS CON BUFFER ULTRA OPTIMIZADO PARA VELOCIDAD Y SONIDO
+            if (Hls.isSupported() && (processedUrl.includes('.m3u8') || processedUrl.includes('m3u8'))) {
+                activeHls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 30,
+                    maxBufferLength: 10,
+                    maxMaxBufferLength: 20,
+                    liveSyncDurationCount: 2,
+                    liveMaxLatencyDurationCount: 5
+                });
+                activeHls.loadSource(processedUrl);
+                activeHls.attachMedia(videoElem);
+                activeHls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    playVideoSafely();
+                });
+                activeHls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        retryBtn.style.display = 'block';
+                    }
+                });
+            } 
+            // REPRODUCCIÓN MPEG-DASH
+            else if (processedUrl.includes('.mpd')) {
+                activeDash = dashjs.MediaPlayer().create();
+                activeDash.initialize(videoElem, processedUrl, true);
+                activeDash.on(dashjs.MediaPlayer.events.ERROR, () => {
+                    retryBtn.style.display = 'block';
+                });
+            } 
+            // REPRODUCCIÓN DIRECTA MP4 / TS / SAFARI HLS
+            else if (videoElem.canPlayType('application/vnd.apple.mpegurl') || videoElem.canPlayType('video/mp4')) {
+                videoElem.src = processedUrl;
+                playVideoSafely();
+            } else {
+                retryBtn.style.display = 'block';
+            }
+        }
+
+        function openExternalPlayerRescue() {
+            playWithIntent(currentLiveStreamUrl);
+        }
+
+        // --- RENDERIZAR ELEMENTOS CON FRAGMENTS Y OBSERVER DE ALTO RENDIMIENTO ---
         function renderItems(category) {
             const grid = document.getElementById('main-content-grid');
             grid.innerHTML = '';
 
             let items = parsedM3U[category] || [];
-            
-            items.forEach((item, index) => {
-                let card = document.createElement('div');
-                card.className = 'movie-card nav-item ' + (currentAppMode === 'live' ? 'live-card' : '');
-                card.setAttribute('tabindex', '0');
+            let currentRenderIndex = 0;
+            const CHUNK_SIZE = 60;
 
-                let imgSrc = item.logo ? item.logo : 'https://i.ibb.co/r2yTwzWd/1000348377.png';
-                let imgId = `item-img-${index}`;
-                
-                card.innerHTML = `
-                    <img id="${imgId}" src="${imgSrc}" onerror="handleImgError(this)" alt="${item.title}">
-                    <div class="card-title-container">
-                        <span class="card-title-text">${item.title}</span>
-                    </div>
-                `;
+            function renderChunk() {
+                const fragment = document.createDocumentFragment();
+                const end = Math.min(currentRenderIndex + CHUNK_SIZE, items.length);
 
-                if (isEditorMode) {
-                    let controls = document.createElement('div');
-                    controls.className = 'editor-controls';
-                    controls.innerHTML = `
-                        <button class="editor-btn nav-item" tabindex="0" onclick="event.stopPropagation(); openItemEditor('${category}', ${index})"><i class="fas fa-edit"></i></button>
-                        <button class="editor-btn delete nav-item" tabindex="0" onclick="event.stopPropagation(); deleteItem('${category}', ${index})"><i class="fas fa-trash"></i></button>
+                for (let i = currentRenderIndex; i < end; i++) {
+                    let item = items[i];
+                    let index = i;
+                    let card = document.createElement('div');
+                    card.className = 'movie-card nav-item ' + (currentAppMode === 'live' ? 'live-card' : '');
+                    card.setAttribute('tabindex', '0');
+
+                    let imgSrc = (item.logo && item.logo.trim() !== '') ? item.logo : 'https://i.ibb.co/r2yTwzWd/1000348377.png';
+                    let imgId = `item-img-${index}`;
+                    
+                    card.innerHTML = `
+                        <img id="${imgId}" src="${imgSrc}" onerror="handleImgError(this)" alt="${item.title}">
+                        <div class="card-title-container">
+                            <span class="card-title-text">${item.title}</span>
+                        </div>
                     `;
-                    card.appendChild(controls);
-                }
 
-                // LÓGICA MODIFICADA AQUÍ: TV EN VIVO REPRODUCE DIRECTO, PELÍCULAS/SERIES ABREN EL MODAL
-                card.onclick = () => {
-                    if (currentAppMode === 'live') {
-                        const videoUrl = item.url;
-                        if (!videoUrl) {
-                            alert("No hay una URL válida para reproducir.");
-                            return;
-                        }
-                        const urlWithoutProtocol = videoUrl.replace(/^https?:\/\//i, '');
-                        const scheme = videoUrl.toLowerCase().startsWith('https') ? 'https' : 'http';
-                        
-                        // Intent nativo de Android (abrirá el cuadro de diálogo para elegir MX Player, VLC, etc.)
-                        const intentUrl = `intent://${urlWithoutProtocol}#Intent;action=android.intent.action.VIEW;scheme=${scheme};type=video/*;end;`;
-                        
-                        try {
-                            window.location.href = intentUrl;
-                        } catch (e) {
-                            alert("Tu dispositivo no soporta el lanzamiento de reproductores externos desde el navegador o no tienes uno instalado.");
-                        }
-                    } else {
-                        // Modos Película y Serie siguen abriendo su sinopsis normal
-                        openItemModal(item, category, index);
-                    }
-                };
-
-                grid.appendChild(card);
-
-                // --- INYECCIÓN DE PÓSTERS TMDB EN EL GRID ---
-                if (currentAppMode === 'movie' || currentAppMode === 'series') {
-                    if (!item.tmdbData && !item.tmdbRequested) {
-                        item.tmdbRequested = true; // Evitar peticiones dobles
-                        // Staggering (retraso dinámico) para no bloquear la app con 500 llamadas simultáneas a TMDB
-                        setTimeout(() => { 
-                            fetchTMDBData(item.title, currentAppMode).then(data => {
-                                if (data) {
-                                    item.tmdbData = data;
-                                    if (data.poster_path) {
-                                        let imgEl = document.getElementById(imgId);
-                                        if (imgEl) imgEl.src = TMDB_IMAGE_BASE + data.poster_path;
-                                    }
+                    if (currentAppMode === 'movie' || currentAppMode === 'series') {
+                        fetchTMDBData(item.title, currentAppMode).then(tmdbData => {
+                            if (tmdbData && tmdbData.poster_path) {
+                                let tmdbImg = document.getElementById(imgId);
+                                if (tmdbImg) {
+                                    tmdbImg.src = TMDB_IMAGE_BASE + tmdbData.poster_path;
+                                    item.tmdbData = tmdbData; 
                                 }
-                            });
-                        }, index * 80); 
-                    } else if (item.tmdbData && item.tmdbData.poster_path) {
-                        let imgEl = document.getElementById(imgId);
-                        if (imgEl) imgEl.src = TMDB_IMAGE_BASE + item.tmdbData.poster_path;
+                            }
+                        }).catch(e => console.warn(e));
+                    }
+
+                    if (isEditorMode) {
+                        let controls = document.createElement('div');
+                        controls.className = 'editor-controls';
+                        controls.innerHTML = `
+                            <button class="editor-btn nav-item" tabindex="0" onclick="event.stopPropagation(); openItemEditor('${category}', ${index})"><i class="fas fa-edit"></i></button>
+                            <button class="editor-btn delete nav-item" tabindex="0" onclick="event.stopPropagation(); deleteItem('${category}', ${index})"><i class="fas fa-trash"></i></button>
+                        `;
+                        card.appendChild(controls);
+                    }
+
+                    card.onclick = () => {
+                        openSynopsis(item);
+                    };
+
+                    fragment.appendChild(card);
+                }
+                
+                grid.appendChild(fragment);
+                currentRenderIndex += CHUNK_SIZE;
+
+                if (currentRenderIndex < items.length) {
+                    const observer = new IntersectionObserver((entries) => {
+                        if (entries[0].isIntersecting) {
+                            observer.disconnect();
+                            renderChunk();
+                        }
+                    });
+                    if (grid.lastChild) {
+                        observer.observe(grid.lastChild);
                     }
                 }
-            });
+            }
+            renderChunk();
         }
 
+        // --- SISTEMA DE SINOPSIS (MODAL) ---
+        async function openSynopsis(item) {
+            destroyMiniPlayer();
+            document.getElementById('m-title').innerText = item.title;
+            let metaContainer = document.getElementById('m-meta-container');
+            let infoGrid = document.getElementById('m-info-grid');
+            let plot = document.getElementById('m-plot');
+            let liveContainer = document.getElementById('live-player-container');
+            
+            metaContainer.innerHTML = '';
+            infoGrid.innerHTML = '';
+            plot.innerText = 'Contenido listo para transmitir.';
+            
+            let tmdbData = item.tmdbData;
+
+            // COMPROBAR SI HAY FONDO GLOBAL SINOPSIS EN VIVO EN BD
+            if (currentAppMode === 'live') {
+                try {
+                    let liveBgSnap = await database.ref('global_settings/backgrounds/live_synopsis').once('value');
+                    let liveBgUrl = liveBgSnap.val();
+                    if (liveBgUrl) {
+                        document.querySelector('.modal-content').style.backgroundImage = `linear-gradient(to right, rgba(10, 10, 15, 0.9) 20%, rgba(10, 10, 15, 0.75) 100%), url('${liveBgUrl}')`;
+                        document.querySelector('.modal-content').style.backgroundSize = 'cover';
+                        document.querySelector('.modal-content').style.backgroundPosition = 'center';
+                    } else {
+                        document.querySelector('.modal-content').style.backgroundImage = 'none';
+                        document.querySelector('.modal-content').style.background = 'var(--netflix-black)';
+                    }
+                } catch(e) { console.warn(e); }
+            } else {
+                document.querySelector('.modal-content').style.backgroundImage = 'none';
+                document.querySelector('.modal-content').style.background = 'var(--netflix-black)';
+            }
+
+            if (!tmdbData && (currentAppMode === 'movie' || currentAppMode === 'series')) {
+                document.getElementById('loader').style.display = 'flex';
+                tmdbData = await fetchTMDBData(item.title, currentAppMode);
+                item.tmdbData = tmdbData;
+                document.getElementById('loader').style.display = 'none';
+            }
+
+            if (tmdbData) {
+                if (liveContainer) liveContainer.style.display = 'none';
+                
+                if(tmdbData.backdrop_path) {
+                    document.querySelector('.modal-content').style.backgroundImage = `linear-gradient(to right, rgba(10, 10, 15, 1) 20%, rgba(10, 10, 15, 0.7) 100%), url('${TMDB_BACKDROP_BASE}${tmdbData.backdrop_path}')`;
+                    document.querySelector('.modal-content').style.backgroundSize = 'cover';
+                    document.querySelector('.modal-content').style.backgroundPosition = 'center';
+                }
+
+                document.getElementById('m-title').innerText = tmdbData.title || tmdbData.name || item.title;
+                
+                let year = '';
+                if(tmdbData.release_date) year = tmdbData.release_date.substring(0,4);
+                if(tmdbData.first_air_date) year = tmdbData.first_air_date.substring(0,4);
+                
+                if(year) metaContainer.innerHTML += `<span class="smarters-badge">${year}</span>`;
+                if(tmdbData.vote_average) metaContainer.innerHTML += `<span class="smarters-badge azul"><i class="fas fa-star" style="color:#eab308"></i> ${(tmdbData.vote_average).toFixed(1)}</span>`;
+                if(tmdbData.runtime) metaContainer.innerHTML += `<span class="smarters-badge">${tmdbData.runtime} min</span>`;
+
+                let genres = tmdbData.genres ? tmdbData.genres.map(g => g.name).join(', ') : 'N/A';
+                infoGrid.innerHTML += `<div class="info-grid-item"><div class="info-grid-label">Géneros:</div><div class="info-grid-value">${genres}</div></div>`;
+                
+                if(tmdbData.credits && tmdbData.credits.cast && tmdbData.credits.cast.length > 0) {
+                    let cast = tmdbData.credits.cast.slice(0,4).map(c => c.name).join(', ');
+                    infoGrid.innerHTML += `<div class="info-grid-item"><div class="info-grid-label">Reparto:</div><div class="info-grid-value">${cast}</div></div>`;
+                }
+
+                if(tmdbData.overview) {
+                    plot.innerText = tmdbData.overview;
+                }
+            } else {
+                metaContainer.innerHTML = `<span class="smarters-badge azul">${currentAppMode.toUpperCase()}</span>`;
+                
+                if (currentAppMode === 'live') {
+                    initMiniLivePlayer(item.url);
+                } else if (liveContainer) {
+                    liveContainer.style.display = 'none';
+                }
+            }
+
+            document.getElementById('m-play-btn').onclick = () => {
+                playWithIntent(item.url);
+            };
+
+            document.getElementById('modal-info').style.display = 'flex';
+            document.getElementById('m-play-btn').focus();
+        }
+
+        // --- EDICIÓN Y ELIMINACIÓN DE ELEMENTOS ---
         function openItemEditor(category, index) {
             let item = parsedM3U[category][index];
             document.getElementById('item-title').value = item.title;
-            document.getElementById('item-logo').value = item.logo;
+            document.getElementById('item-logo').value = item.logo || '';
             document.getElementById('item-url').value = item.url;
             document.getElementById('item-original-cat').value = category;
             document.getElementById('item-original-idx').value = index;
@@ -1859,132 +2291,29 @@
         }
 
         async function saveItemEdit() {
-            let category = document.getElementById('item-original-cat').value;
-            let index = parseInt(document.getElementById('item-original-idx').value);
+            let cat = document.getElementById('item-original-cat').value;
+            let idx = document.getElementById('item-original-idx').value;
+            let title = document.getElementById('item-title').value.trim();
+            let logo = document.getElementById('item-logo').value.trim();
+            let url = document.getElementById('item-url').value.trim();
             
-            parsedM3U[category][index].title = document.getElementById('item-title').value;
-            parsedM3U[category][index].logo = document.getElementById('item-logo').value;
-            parsedM3U[category][index].url = document.getElementById('item-url').value;
-
-            await saveM3UState();
-            closeItemEditor();
-            renderItems(category);
+            if(parsedM3U[cat] && parsedM3U[cat][idx]) {
+                parsedM3U[cat][idx].title = title;
+                parsedM3U[cat][idx].logo = logo;
+                parsedM3U[cat][idx].url = url;
+                
+                await saveM3UState();
+                renderItems(cat);
+                closeItemEditor();
+                alert("Elemento modificado y guardado en la nube exitosamente.");
+            }
         }
 
         async function deleteItem(category, index) {
-            if (confirm("¿Estás seguro de eliminar este elemento permanentemente?")) {
+            if(confirm("¿Estás seguro de que deseas eliminar este elemento de la lista?")) {
                 parsedM3U[category].splice(index, 1);
                 await saveM3UState();
                 renderItems(category);
-            }
-        }
-
-        // --- LÓGICA DEL MODAL DE INFORMACIÓN DETALLADA E INTENT AL REPRODUCTOR EXTERNO ---
-        async function openItemModal(item, category, index) {
-            // Valores iniciales
-            document.getElementById('m-title').innerText = item.title;
-            document.getElementById('m-plot').innerText = "Cargando sinopsis y detalles desde los servidores...";
-            document.getElementById('m-meta-container').innerHTML = '';
-            document.getElementById('m-info-grid').innerHTML = '';
-            
-            // --- ASIGNAR ACCIÓN DE PLAY (INTENTS DE ANDROID) ---
-            document.getElementById('m-play-btn').onclick = () => {
-                const videoUrl = item.url;
-                
-                if (!videoUrl) {
-                    alert("No hay una URL válida para reproducir.");
-                    return;
-                }
-
-                // Limpiar la URL para adaptar al intent
-                const urlWithoutProtocol = videoUrl.replace(/^https?:\/\//i, '');
-                const scheme = videoUrl.toLowerCase().startsWith('https') ? 'https' : 'http';
-                
-                // Intent nativo de Android (abrirá el cuadro de diálogo para elegir MX Player, VLC, etc.)
-                const intentUrl = `intent://${urlWithoutProtocol}#Intent;action=android.intent.action.VIEW;scheme=${scheme};type=video/*;end;`;
-                
-                try {
-                    window.location.href = intentUrl;
-                } catch (e) {
-                    alert("Tu dispositivo no soporta el lanzamiento de reproductores externos desde el navegador o no tienes uno instalado.");
-                }
-            };
-            // -----------------------------------------------------------
-
-            // Mostrar el modal y enfocar el play
-            document.getElementById('modal-info').style.display = 'flex';
-            setTimeout(() => document.getElementById('m-play-btn').focus(), 100);
-
-            // Cargar datos TMDB
-            let data = item.tmdbData;
-            
-            if (!data && (currentAppMode === 'movie' || currentAppMode === 'series')) {
-                 data = await fetchTMDBData(item.title, currentAppMode);
-                 item.tmdbData = data; 
-            }
-
-            if (data) {
-                // Fondo Modal Dinámico (Backdrop)
-                if (data.backdrop_path) {
-                    const modalContent = document.querySelector('.modal-content');
-                    modalContent.style.backgroundImage = `radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), rgba(5,5,7,0.9) 70%), url('${TMDB_BACKDROP_BASE + data.backdrop_path}')`;
-                    modalContent.style.backgroundSize = 'cover';
-                    modalContent.style.backgroundPosition = 'top right';
-                } else {
-                    document.querySelector('.modal-content').style.backgroundImage = 'radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), transparent), var(--netflix-black)';
-                }
-
-                // Título original detectado
-                document.getElementById('m-title').innerText = data.title || data.name || item.title;
-
-                // Sinopsis Oficial
-                document.getElementById('m-plot').innerText = data.overview || "No hay sinopsis disponible en español para este título.";
-
-                // Insignias Superiores (Meta Data)
-                let year = (data.release_date || data.first_air_date || '').substring(0, 4);
-                let rating = data.vote_average ? data.vote_average.toFixed(1) : false;
-                let runtime = data.runtime;
-                let seasons = data.number_of_seasons;
-
-                let metaHTML = '';
-                if(rating) metaHTML += `<span class="smarters-badge azul"><i class="fas fa-star" style="color:#f5c518"></i> ${rating}</span>`;
-                if(year) metaHTML += `<span class="smarters-badge">${year}</span>`;
-                if(runtime) metaHTML += `<span class="smarters-badge">${runtime} min</span>`;
-                if(seasons) metaHTML += `<span class="smarters-badge">${seasons} Temporadas</span>`;
-                
-                document.getElementById('m-meta-container').innerHTML = metaHTML;
-
-                // Información Tabular (Grid Informativo)
-                let infoHTML = '';
-                if(data.genres && data.genres.length > 0) {
-                    infoHTML += `<div class="info-grid-item"><span class="info-grid-label">Género:</span><span class="info-grid-value">${data.genres.map(g => g.name).join(', ')}</span></div>`;
-                }
-                
-                if(data.credits) {
-                    if (data.credits.crew) {
-                        let director = data.credits.crew.find(c => c.job === 'Director');
-                        if(director) {
-                            infoHTML += `<div class="info-grid-item"><span class="info-grid-label">Director:</span><span class="info-grid-value">${director.name}</span></div>`;
-                        }
-                    }
-                    if (data.credits.cast && data.credits.cast.length > 0) {
-                        let cast = data.credits.cast.slice(0, 5).map(c => c.name).join(', ');
-                        infoHTML += `<div class="info-grid-item"><span class="info-grid-label">Reparto:</span><span class="info-grid-value">${cast}</span></div>`;
-                    }
-                }
-
-                document.getElementById('m-info-grid').innerHTML = infoHTML;
-            } else {
-                // Modo TV en Vivo o Fallback (No se halló info en TMDB)
-                document.querySelector('.modal-content').style.backgroundImage = 'radial-gradient(circle at top right, rgba(255, 255, 255, 0.05), transparent), var(--netflix-black)';
-                document.getElementById('m-plot').innerText = (currentAppMode === 'live') ? "Transmisión en directo en la red." : "Información extendida no disponible en la base de datos central.";
-            }
-        }
-
-        // --- COMPLETAR FALLBACK DE IMÁGENES ---
-        function handleImgError(img) {
-            if (!img.src.includes('1000348377.png')) {
-                img.src = 'https://i.ibb.co/r2yTwzWd/1000348377.png';
             }
         }
     </script>
